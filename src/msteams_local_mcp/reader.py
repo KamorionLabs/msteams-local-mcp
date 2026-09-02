@@ -139,12 +139,19 @@ class TeamsCacheReader:
             )
         self._src = path
         self._tmp: Optional[str] = None
+        blob_path = path.removesuffix(".leveldb") + ".blob"
+        if not os.path.isdir(blob_path):
+            blob_path = None
         if copy:
             self._tmp = tempfile.mkdtemp(prefix="msteams-cache-")
             dst = os.path.join(self._tmp, os.path.basename(path))
             shutil.copytree(path, dst)
             path = dst
-        self._db = _idb.WrappedIndexDB(path)
+            if blob_path:
+                blob_dst = os.path.join(self._tmp, os.path.basename(blob_path))
+                shutil.copytree(blob_path, blob_dst)
+                blob_path = blob_dst
+        self._db = _idb.WrappedIndexDB(path, blob_path)
         self._skipped = 0
 
     def close(self) -> None:
