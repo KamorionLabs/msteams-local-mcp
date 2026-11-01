@@ -49,6 +49,23 @@ def _text(value: Any) -> str:
     return _TAG_RE.sub("", html.unescape(value)).strip()
 
 
+def _conversation_title(record: dict) -> str:
+    """Display title of a ``conversations`` record, or "" if it has none.
+
+    Channels and named group chats have ``threadProperties.topic``. 1:1 and
+    unnamed group chats have no topic, so use ``chatTitle``, the title computed
+    by the Teams client. A title with an unresolved member is left out.
+    """
+    props = record.get("threadProperties")
+    topic = _text((props.get("topic") if isinstance(props, dict) else "") or "")
+    if topic:
+        return topic
+    chat = record.get("chatTitle")
+    if not isinstance(chat, dict) or chat.get("hasUnknownUserInShortTitle"):
+        return ""
+    return _text(chat.get("shortTitle") or "") or _text(chat.get("longTitle") or "")
+
+
 # --- Cache discovery ---------------------------------------------------------
 
 def default_cache_globs() -> list[str]:
@@ -252,15 +269,11 @@ class TeamsCacheReader:
                 if rec.value is None:
                     continue
                 v = rec.value
-                tp = v.get("threadProperties") or {}
                 last = v.get("lastMessage") if isinstance(v.get("lastMessage"), dict) else {}
                 yield {
                     "account": acc.key,
                     "id": str(v.get("id", "")),
-                    # The display title lives in threadProperties.topic (channels/named
-                    # group chats). 1:1 chats have no topic — the caller can fall back
-                    # to member names.
-                    "title": _text((tp.get("topic") if isinstance(tp, dict) else "") or ""),
+                    "title": _conversation_title(v),
                     "type": str(v.get("type", "")),
                     "last_message_time": str(v.get("lastMessageTimeUtc", "")),
                     "last_message": _text(last.get("content") if last else ""),

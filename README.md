@@ -81,7 +81,7 @@ Tools exposed (all read-only):
 | `unread_messages` | your unread @-mentions (the only reliable unread signal — see note) |
 | `search_messages` | substring search across messages, optional `days` recency |
 | `read_conversation` | messages of one conversation (newest last) |
-| `list_conversations` | chats/channels (id, title, type) |
+| `list_conversations` | chats/channels (id, title, type); 1:1 and unnamed group chats use the title Teams shows |
 | `list_accounts` | the tenant/user contexts, with an inferred org label |
 
 All accept an optional `account` filter (a key from `list_accounts`) to scope to one
