@@ -49,6 +49,8 @@ _CACHE_FILE = pathlib.Path(
     os.environ.get("MSTEAMS_CACHE_DIR")
     or (pathlib.Path.home() / ".cache" / "msteams-local-mcp")
 ) / "snapshot.json"
+# Bump whenever the parsed output changes, so stale on-disk snapshots are discarded.
+_SNAPSHOT_VERSION = 2
 
 # In-memory snapshot: parse once, reuse for _TTL seconds across tool calls.
 _snap: dict = {
@@ -74,9 +76,12 @@ def _load_disk(sig: str) -> Optional[dict]:
         data = json.loads(_CACHE_FILE.read_text())
     except (OSError, ValueError):
         return None
-    if data.get("sig") != sig:
+    if data.get("sig") != sig or data.get("version") != _SNAPSHOT_VERSION:
         return None
-    data["messages"] = [Message(**m) for m in data.get("messages", [])]
+    try:
+        data["messages"] = [Message(**m) for m in data.get("messages", [])]
+    except TypeError:  # fields changed without a version bump
+        return None
     return data
 
 
@@ -84,6 +89,7 @@ def _save_disk(snap: dict) -> None:
     try:
         _CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
         payload = {
+            "version": _SNAPSHOT_VERSION,
             "sig": snap["sig"],
             "messages": [dataclasses.asdict(m) for m in snap["messages"]],
             "conversations": snap["conversations"],
@@ -285,6 +291,7 @@ def _mentions_impl(days, unread_only, account, limit):
                 "is_read": mt["is_read"],
                 "conversation": titles.get((mt["account"], mt["conversation_id"]), "")
                 or mt["conversation_id"],
+                "conversation_id": mt["conversation_id"],
                 "sender": m.sender if m else "",
                 "content": (m.content[:_MAXLEN] if m else ""),
                 "account": mt["account"],
@@ -323,7 +330,8 @@ def unread_messages(days: int = 30, account: Optional[str] = None, limit: int = 
 def overview(days: int = 7, account: Optional[str] = None) -> list[dict]:
     """Who messaged you: recent activity grouped by conversation, newest first.
 
-    Per conversation: title, message count, distinct senders, last message + time.
+    Per conversation: title, ``conversation_id`` (for ``read_conversation``), message
+    count, distinct senders, last message + time.
     Great first call to get the lay of the land before drilling in.
     """
     snap = _snapshot()
@@ -350,6 +358,7 @@ def overview(days: int = 7, account: Optional[str] = None) -> list[dict]:
         rows.append(
             {
                 "conversation": titles.get((acc, cid), "") or cid,
+                "conversation_id": cid,
                 "count": g["count"],
                 "senders": sorted(g["senders"])[:8],
                 "last_sender": last.sender if last else "",

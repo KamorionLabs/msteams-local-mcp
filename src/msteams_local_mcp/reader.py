@@ -49,6 +49,25 @@ def _text(value: Any) -> str:
     return _TAG_RE.sub("", html.unescape(value)).strip()
 
 
+def _conversation_title(record: dict) -> str:
+    """Display title of a ``conversations`` record, or "" if it has none.
+
+    Channels and named group chats have ``threadProperties.topic``. 1:1 and
+    unnamed group chats have no topic, so use ``chatTitle``, the title computed
+    by the Teams client. A short title with an unresolved member is skipped in
+    favor of the long title.
+    """
+    props = record.get("threadProperties")
+    topic = _text((props.get("topic") if isinstance(props, dict) else "") or "")
+    if topic:
+        return topic
+    chat = record.get("chatTitle")
+    if not isinstance(chat, dict):
+        return ""
+    short = "" if chat.get("hasUnknownUserInShortTitle") else _text(chat.get("shortTitle") or "")
+    return short or _text(chat.get("longTitle") or "")
+
+
 # --- Cache discovery ---------------------------------------------------------
 
 def default_cache_globs() -> list[str]:
@@ -196,11 +215,13 @@ class TeamsCacheReader:
             names: dict[str, int] = {}
             seen = 0
             for rec in obj.iterate_records(bad_deserializer_data_handler=self._on_bad):
-                if rec.value is None:
+                if not isinstance(rec.value, dict):
                     continue
                 mm = rec.value.get("messageMap") or {}
                 if isinstance(mm, dict):
                     for msg in mm.values():
+                        if not isinstance(msg, dict):
+                            continue
                         who = _text(msg.get("imDisplayName"))
                         m = re.search(r"\(([^)]+)\)\s*$", who)  # e.g. "X (GP Rubix)"
                         if m:
@@ -219,12 +240,14 @@ class TeamsCacheReader:
             if account and acc.key != account:
                 continue
             for rec in obj.iterate_records(bad_deserializer_data_handler=self._on_bad):
-                if rec.value is None:
+                if not isinstance(rec.value, dict):
                     continue
                 mm = rec.value.get("messageMap") or {}
                 if not isinstance(mm, dict):
                     continue
                 for mid, msg in mm.items():
+                    if not isinstance(msg, dict):
+                        continue
                     content = _text(msg.get("content"))
                     if not content:
                         continue
@@ -249,18 +272,14 @@ class TeamsCacheReader:
             if account and acc.key != account:
                 continue
             for rec in obj.iterate_records(bad_deserializer_data_handler=self._on_bad):
-                if rec.value is None:
+                if not isinstance(rec.value, dict):
                     continue
                 v = rec.value
-                tp = v.get("threadProperties") or {}
                 last = v.get("lastMessage") if isinstance(v.get("lastMessage"), dict) else {}
                 yield {
                     "account": acc.key,
                     "id": str(v.get("id", "")),
-                    # The display title lives in threadProperties.topic (channels/named
-                    # group chats). 1:1 chats have no topic — the caller can fall back
-                    # to member names.
-                    "title": _text((tp.get("topic") if isinstance(tp, dict) else "") or ""),
+                    "title": _conversation_title(v),
                     "type": str(v.get("type", "")),
                     "last_message_time": str(v.get("lastMessageTimeUtc", "")),
                     "last_message": _text(last.get("content") if last else ""),
