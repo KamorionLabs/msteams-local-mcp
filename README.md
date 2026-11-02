@@ -91,7 +91,7 @@ marker, so true "all unread" can't be derived; `unread_messages` returns unread
 
 Performance: the LevelDB is parsed once and cached (in memory + on disk, keyed on
 the store's signature), so chained calls are near-instant and re-parsing happens only
-when Teams writes new data.
+when Teams writes new data or the snapshot format changes.
 
 ## Scope, limits & ethics
 

@@ -49,6 +49,8 @@ _CACHE_FILE = pathlib.Path(
     os.environ.get("MSTEAMS_CACHE_DIR")
     or (pathlib.Path.home() / ".cache" / "msteams-local-mcp")
 ) / "snapshot.json"
+# Bump whenever the parsed output changes, so stale on-disk snapshots are discarded.
+_SNAPSHOT_VERSION = 2
 
 # In-memory snapshot: parse once, reuse for _TTL seconds across tool calls.
 _snap: dict = {
@@ -74,7 +76,7 @@ def _load_disk(sig: str) -> Optional[dict]:
         data = json.loads(_CACHE_FILE.read_text())
     except (OSError, ValueError):
         return None
-    if data.get("sig") != sig:
+    if data.get("sig") != sig or data.get("version") != _SNAPSHOT_VERSION:
         return None
     data["messages"] = [Message(**m) for m in data.get("messages", [])]
     return data
@@ -84,6 +86,7 @@ def _save_disk(snap: dict) -> None:
     try:
         _CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
         payload = {
+            "version": _SNAPSHOT_VERSION,
             "sig": snap["sig"],
             "messages": [dataclasses.asdict(m) for m in snap["messages"]],
             "conversations": snap["conversations"],
