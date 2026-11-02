@@ -50,3 +50,23 @@ def test_conversations_yields_the_chat_title():
     rows = list(reader.conversations())
 
     assert [(row["id"], row["title"]) for row in rows] == [("19:a_b@unq.gbl.spaces", "Ann Lee")]
+
+
+@pytest.mark.parametrize("root", [["item"], Undefined()])
+@pytest.mark.parametrize(
+    "read",
+    [
+        lambda reader: list(reader.conversations()),
+        lambda reader: list(reader.messages()),
+        lambda reader: [acc.label for acc in reader.accounts() if acc.label],
+    ],
+    ids=["conversations", "messages", "accounts"],
+)
+def test_records_that_are_not_objects_are_skipped(read, root):
+    reader = TeamsCacheReader.__new__(TeamsCacheReader)
+    reader._stores = lambda manager, store: [
+        (Account(tenant_id="t", user_id="u"),
+         SimpleNamespace(iterate_records=lambda **_: [SimpleNamespace(value=root)]))
+    ]
+
+    assert read(reader) == []

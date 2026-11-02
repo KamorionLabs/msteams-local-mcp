@@ -215,7 +215,7 @@ class TeamsCacheReader:
             names: dict[str, int] = {}
             seen = 0
             for rec in obj.iterate_records(bad_deserializer_data_handler=self._on_bad):
-                if rec.value is None:
+                if not isinstance(rec.value, dict):
                     continue
                 mm = rec.value.get("messageMap") or {}
                 if isinstance(mm, dict):
@@ -238,7 +238,7 @@ class TeamsCacheReader:
             if account and acc.key != account:
                 continue
             for rec in obj.iterate_records(bad_deserializer_data_handler=self._on_bad):
-                if rec.value is None:
+                if not isinstance(rec.value, dict):
                     continue
                 mm = rec.value.get("messageMap") or {}
                 if not isinstance(mm, dict):
@@ -268,7 +268,7 @@ class TeamsCacheReader:
             if account and acc.key != account:
                 continue
             for rec in obj.iterate_records(bad_deserializer_data_handler=self._on_bad):
-                if rec.value is None:
+                if not isinstance(rec.value, dict):
                     continue
                 v = rec.value
                 last = v.get("lastMessage") if isinstance(v.get("lastMessage"), dict) else {}
