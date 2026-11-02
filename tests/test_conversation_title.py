@@ -70,3 +70,23 @@ def test_records_that_are_not_objects_are_skipped(read, root):
     ]
 
     assert read(reader) == []
+
+
+@pytest.mark.parametrize("entry", [Undefined(), None, "text", ["item"]], ids=repr)
+@pytest.mark.parametrize(
+    "read, expected",
+    [
+        (lambda reader: [m.content for m in reader.messages()], ["hi"]),
+        (lambda reader: [acc.label for acc in reader.accounts()], ["Org"]),
+    ],
+    ids=["messages", "accounts"],
+)
+def test_message_entries_that_are_not_objects_are_skipped(read, expected, entry):
+    record = {"messageMap": {"bad": entry, "good": {"content": "hi", "imDisplayName": "Ann (Org)"}}}
+    reader = TeamsCacheReader.__new__(TeamsCacheReader)
+    reader._stores = lambda manager, store: [
+        (Account(tenant_id="t", user_id="u"),
+         SimpleNamespace(iterate_records=lambda **_: [SimpleNamespace(value=record)]))
+    ]
+
+    assert read(reader) == expected

@@ -220,6 +220,8 @@ class TeamsCacheReader:
                 mm = rec.value.get("messageMap") or {}
                 if isinstance(mm, dict):
                     for msg in mm.values():
+                        if not isinstance(msg, dict):
+                            continue
                         who = _text(msg.get("imDisplayName"))
                         m = re.search(r"\(([^)]+)\)\s*$", who)  # e.g. "X (GP Rubix)"
                         if m:
@@ -244,6 +246,8 @@ class TeamsCacheReader:
                 if not isinstance(mm, dict):
                     continue
                 for mid, msg in mm.items():
+                    if not isinstance(msg, dict):
+                        continue
                     content = _text(msg.get("content"))
                     if not content:
                         continue

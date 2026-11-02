@@ -1,5 +1,6 @@
 """On-disk snapshot versioning, with synthetic data."""
 import json
+import time
 
 import pytest
 
@@ -75,3 +76,32 @@ def test_snapshot_of_the_current_version_is_reused(leveldb):
 
     assert FakeReader.parses == 0
     assert snap["conversations"][0]["title"] == ""
+
+
+def test_snapshot_with_unexpected_message_fields_is_parsed_again(leveldb):
+    server._CACHE_FILE.write_text(json.dumps({
+        **_disk_snapshot(server._signature(leveldb), version=server._SNAPSHOT_VERSION),
+        "messages": [{"unexpected": "field"}],
+    }))
+
+    snap = server._snapshot()
+
+    assert FakeReader.parses == 1
+    assert snap["conversations"][0]["title"] == "Ann Lee"
+
+
+@pytest.mark.parametrize("tool", [server.overview, server.mentions], ids=["overview", "mentions"])
+def test_titled_rows_lead_to_read_conversation(monkeypatch, tool):
+    now = str(time.time() * 1000)
+    snap = {
+        "messages": [Message("a", "c", "r", "m", "Ann Lee", now, "hi", "text")],
+        "conversations": [{"account": "a", "id": "c", "title": "Ann Lee"}],
+        "mentions": [{"account": "a", "conversation_id": "c", "message_id": "m",
+                      "reply_chain_id": "r", "timestamp": now, "is_read": False}],
+    }
+    monkeypatch.setattr(server, "_snapshot", lambda: snap)
+
+    row = tool()[0]
+
+    assert row["conversation"] == "Ann Lee"
+    assert [m["content"] for m in server.read_conversation(row["conversation_id"])] == ["hi"]

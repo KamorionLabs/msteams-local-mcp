@@ -78,7 +78,10 @@ def _load_disk(sig: str) -> Optional[dict]:
         return None
     if data.get("sig") != sig or data.get("version") != _SNAPSHOT_VERSION:
         return None
-    data["messages"] = [Message(**m) for m in data.get("messages", [])]
+    try:
+        data["messages"] = [Message(**m) for m in data.get("messages", [])]
+    except TypeError:  # fields changed without a version bump
+        return None
     return data
 
 
@@ -288,6 +291,7 @@ def _mentions_impl(days, unread_only, account, limit):
                 "is_read": mt["is_read"],
                 "conversation": titles.get((mt["account"], mt["conversation_id"]), "")
                 or mt["conversation_id"],
+                "conversation_id": mt["conversation_id"],
                 "sender": m.sender if m else "",
                 "content": (m.content[:_MAXLEN] if m else ""),
                 "account": mt["account"],
@@ -326,7 +330,8 @@ def unread_messages(days: int = 30, account: Optional[str] = None, limit: int = 
 def overview(days: int = 7, account: Optional[str] = None) -> list[dict]:
     """Who messaged you: recent activity grouped by conversation, newest first.
 
-    Per conversation: title, message count, distinct senders, last message + time.
+    Per conversation: title, ``conversation_id`` (for ``read_conversation``), message
+    count, distinct senders, last message + time.
     Great first call to get the lay of the land before drilling in.
     """
     snap = _snapshot()
@@ -353,6 +358,7 @@ def overview(days: int = 7, account: Optional[str] = None) -> list[dict]:
         rows.append(
             {
                 "conversation": titles.get((acc, cid), "") or cid,
+                "conversation_id": cid,
                 "count": g["count"],
                 "senders": sorted(g["senders"])[:8],
                 "last_sender": last.sender if last else "",
