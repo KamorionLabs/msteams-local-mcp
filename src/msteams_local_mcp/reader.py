@@ -54,16 +54,18 @@ def _conversation_title(record: dict) -> str:
 
     Channels and named group chats have ``threadProperties.topic``. 1:1 and
     unnamed group chats have no topic, so use ``chatTitle``, the title computed
-    by the Teams client. A title with an unresolved member is left out.
+    by the Teams client. A short title with an unresolved member is skipped in
+    favor of the long title.
     """
     props = record.get("threadProperties")
     topic = _text((props.get("topic") if isinstance(props, dict) else "") or "")
     if topic:
         return topic
     chat = record.get("chatTitle")
-    if not isinstance(chat, dict) or chat.get("hasUnknownUserInShortTitle"):
+    if not isinstance(chat, dict):
         return ""
-    return _text(chat.get("shortTitle") or "") or _text(chat.get("longTitle") or "")
+    short = "" if chat.get("hasUnknownUserInShortTitle") else _text(chat.get("shortTitle") or "")
+    return short or _text(chat.get("longTitle") or "")
 
 
 # --- Cache discovery ---------------------------------------------------------

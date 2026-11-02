@@ -25,6 +25,8 @@ class Undefined:
         ({"chatTitle": {"shortTitle": "", "longTitle": "Ann Lee, Bob Ray"}}, "Ann Lee, Bob Ray"),
         ({"chatTitle": {"shortTitle": Undefined(), "longTitle": Undefined()}}, ""),
         ({"chatTitle": {"shortTitle": "Unknown", "hasUnknownUserInShortTitle": True}}, ""),
+        ({"chatTitle": {"shortTitle": "Unknown", "longTitle": "Ann Lee, Bob Ray",
+                        "hasUnknownUserInShortTitle": True}}, "Ann Lee, Bob Ray"),
         ({"chatTitle": Undefined()}, ""),
         ({"threadProperties": Undefined()}, ""),
         ({}, ""),
