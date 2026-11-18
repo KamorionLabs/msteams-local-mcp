@@ -50,7 +50,7 @@ _CACHE_FILE = pathlib.Path(
     or (pathlib.Path.home() / ".cache" / "msteams-local-mcp")
 ) / "snapshot.json"
 # Bump whenever the parsed output changes, so stale on-disk snapshots are discarded.
-_SNAPSHOT_VERSION = 2
+_SNAPSHOT_VERSION = 3
 
 # In-memory snapshot: parse once, reuse for _TTL seconds across tool calls.
 _snap: dict = {
