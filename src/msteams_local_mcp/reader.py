@@ -194,7 +194,14 @@ class TeamsCacheReader:
         return None
 
     def _stores(self, manager: str, store: str):
-        """Yield (Account, WrappedObjectStore) for each context of a manager."""
+        """Yield (Account, WrappedObjectStore) for each context of a manager.
+
+        A database can hold numbered copies of a store: ``replychain-manager``
+        now has ``replychains`` and ``replychains-2``, and the recent messages
+        of some chats are only in the second one. So every store named
+        ``<store>`` or ``<store>-<n>`` is yielded.
+        """
+        wanted = re.compile(re.escape(store) + r"(?:-\d+)?")
         for meta in self._db.database_ids:
             name = meta.name or ""
             if f"Teams:{manager}:" not in name:
@@ -206,11 +213,9 @@ class TeamsCacheReader:
             except IndexError:
                 continue
             db = self._db[meta.dbid_no]
-            try:
-                obj = db.get_object_store_by_name(store)
-            except Exception:
-                continue
-            yield Account(tenant_id=tenant_id, user_id=user_id), obj
+            for number, found in enumerate(db.object_store_names, 1):
+                if isinstance(found, str) and wanted.fullmatch(found):
+                    yield Account(tenant_id=tenant_id, user_id=user_id), db.get_object_store_by_id(number)
 
     # -- public API --
 

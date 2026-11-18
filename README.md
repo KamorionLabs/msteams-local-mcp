@@ -31,7 +31,8 @@ backed by Chromium LevelDB, values serialized in V8. This tool:
 
 1. locates that LevelDB (auto-discovery per OS, or `MSTEAMS_LEVELDB=/path`),
 2. copies it to a temp dir (the running client holds a file lock),
-3. enumerates each `(tenant, user)` context and reads `replychains` / `conversations`,
+3. enumerates each `(tenant, user)` context and reads `replychains` (with numbered
+   copies such as `replychains-2`) / `conversations`,
 4. yields plain-text messages (sender, timestamp, content), skipping the rare
    record that fails to deserialize.
 
